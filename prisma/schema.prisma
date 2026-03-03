@@ -1,0 +1,80 @@
+// ─────────────────────────────────────────────
+// GAVEL — Production Database Schema
+// Prisma v6 Compatible
+// ─────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// USER MODEL
+// ─────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  firstName   String?
+  lastName    String?
+  role        UserRole @default(USER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registrations Registration[]
+}
+
+// ─────────────────────────────────────────────
+// CONFERENCE MODEL
+// ─────────────────────────────────────────────
+
+model Conference {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  location    String?
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registrations Registration[]
+}
+
+// ─────────────────────────────────────────────
+// REGISTRATION MODEL
+// ─────────────────────────────────────────────
+
+model Registration {
+  id            String   @id @default(uuid())
+  userId        String
+  conferenceId  String
+  status        RegistrationStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conference  Conference @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conferenceId])
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+  ORGANIZER
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
