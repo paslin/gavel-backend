@@ -1,80 +1,150 @@
-// ─────────────────────────────────────────────
-// GAVEL — Production Database Schema
-// Prisma v6 Compatible
-// ─────────────────────────────────────────────
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// ─────────────────────────────────────────────
-// USER MODEL
-// ─────────────────────────────────────────────
-
-model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  password    String
-  firstName   String?
-  lastName    String?
-  role        UserRole @default(USER)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  registrations Registration[]
-}
-
-// ─────────────────────────────────────────────
-// CONFERENCE MODEL
-// ─────────────────────────────────────────────
-
-model Conference {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  location    String?
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  registrations Registration[]
-}
-
-// ─────────────────────────────────────────────
-// REGISTRATION MODEL
-// ─────────────────────────────────────────────
-
-model Registration {
-  id            String   @id @default(uuid())
-  userId        String
-  conferenceId  String
-  status        RegistrationStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conference  Conference @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, conferenceId])
-}
-
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
-
-enum UserRole {
-  USER
+enum Role {
+  SUPER_ADMIN
   ADMIN
-  ORGANIZER
+  DELEGATE
 }
 
 enum RegistrationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  COMMITTEE
+  REGISTRATION
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  name            String
+  password        String
+  role            Role            @default(DELEGATE)
+  bio             String?
+  school          String?
+  country         String?
+  phone           String?
+  instagram       String?
+  avatarUrl       String?
+  experienceLevel String?         @default("BEGINNER")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  refreshTokens   RefreshToken[]
+  registrations   Registration[]
+  conferences     Conference[]    @relation("ConferenceAdmin")
+  notifications   Notification[]
+  awards          Award[]
+  pastConferences PastConference[]
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Conference {
+  id                   String         @id @default(cuid())
+  title                String
+  description          String?
+  city                 String?
+  country              String?
+  venue                String?
+  startDate            DateTime
+  endDate              DateTime
+  registrationDeadline DateTime?
+  isFree               Boolean        @default(true)
+  baseFee              Float          @default(0)
+  maxDelegates         Int?
+  bannerUrl            String?
+  logoUrl              String?
+  website              String?
+  isPublished          Boolean        @default(false)
+  isOpen               Boolean        @default(true)
+  adminId              String
+  admin                User           @relation("ConferenceAdmin", fields: [adminId], references: [id])
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  registrations        Registration[]
+  committees           Committee[]
+}
+
+model Committee {
+  id           String   @id @default(cuid())
+  name         String
+  type         String?
+  agenda       String?
+  description  String?
+  spots        Int?
+  conferenceId String
+  conference   Conference @relation(fields: [conferenceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Registration {
+  id                  String             @id @default(cuid())
+  userId              String
+  conferenceId        String
+  status              RegistrationStatus @default(PENDING)
+  committeePreferences String[]
+  customFieldData     Json?
+  country             String?
+  committee           String?
+  notes               String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  user                User               @relation(fields: [userId], references: [id])
+  conference          Conference         @relation(fields: [conferenceId], references: [id])
+
+  @@unique([userId, conferenceId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(INFO)
+  icon      String?
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Award {
+  id        String   @id @default(cuid())
+  userId    String
+  award     String
+  conf      String?
+  committee String?
+  emoji     String?  @default("🏅")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PastConference {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  conf      String?
+  role      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
